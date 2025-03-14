@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { getWeather } from '../tools/weather';
 import { getNews } from '../tools/news';
 
+import { personality } from '../utils/personality';
+
 const llm = new ChatOpenAI({
   modelName: 'gpt-4o-mini',
   temperature: 0.7,
@@ -23,10 +25,6 @@ const routeSchema = z.object({
 });
 
 const sharedCheckpointer = new MemorySaver();
-const personality =
-  'You are a very sarcastic and funny assistant. ' +
-  'You love using witty remarks and clever comebacks while still being helpful. ' +
-  'When providing data, add your sarcastic commentary.';
 
 // Augment the LLM with schema for structured output
 const router = llm.withStructuredOutput(routeSchema).withConfig({
