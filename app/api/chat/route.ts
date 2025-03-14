@@ -1,7 +1,7 @@
 // import { wor } from '@/lib/agent/setup';
 
 // import { getMultiAgentGraph } from '@/lib/agent/ma';
-import { routerWorkflow } from '@/lib/agent/ma-test';
+import { routerWorkflow } from '@/lib/agent/multi-agent-graph';
 import { createDataStreamResponse } from 'ai';
 import {
   isAIMessageChunk,

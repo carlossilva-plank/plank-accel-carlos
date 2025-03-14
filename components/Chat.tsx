@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useChat } from 'ai/react';
 import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
@@ -56,6 +56,8 @@ export function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const {
@@ -74,38 +76,44 @@ export function Chat() {
     },
     onResponse: async (response) => {
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        setError('An error occurred while processing the message. Please try again.');
+        return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No reader available');
+      try {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No reader available');
+        }
+
+        const { value } = await reader.read();
+        const newMessage = new TextDecoder().decode(value);
+
+        const messageObject = JSON.parse(newMessage);
+
+        setMessages((prev) => {
+          return [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: messageObject.combinedOutputs,
+              agents: messageObject.decision,
+            } as ExtendedMessage,
+          ];
+        });
+      } catch (err) {
+        setError('An error occurred while processing the message. Please try again.');
       }
-
-      const { value } = await reader.read();
-      const newMessage = new TextDecoder().decode(value);
-
-      const messageObject = JSON.parse(newMessage);
-      console.log(messageObject, 'messageObject');
-
-      setMessages((prev) => {
-        return [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: messageObject.combinedOutputs,
-            agents: messageObject.decision,
-          } as ExtendedMessage,
-        ];
-      });
       return;
     },
   });
 
+  const loadingState = isLoading || loading;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || !input.trim()) return;
+    if (loadingState || !input.trim()) return;
 
     setTimeout(() => {
       chatContainerRef.current?.scrollTo({
@@ -120,7 +128,7 @@ export function Chat() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isLoading && input.trim()) {
+      if (!loadingState && input.trim()) {
         handleSubmit(e);
       }
     }
@@ -138,6 +146,7 @@ export function Chat() {
 
   const handleLogout = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/auth/logout', {
         method: 'POST',
       });
@@ -149,6 +158,8 @@ export function Chat() {
       router.replace('/login');
     } catch (error) {
       console.error('Error logging out:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -163,6 +174,43 @@ export function Chat() {
     <div className={`flex h-screen flex-col bg-[#F5F1E9] ${quicksand.className}`}>
       <ChatHeader onLogout={handleLogout} />
       <div className="flex-1 space-y-4 overflow-y-auto p-4" ref={chatContainerRef}>
+        {error && (
+          <div className="animate-fade-in flex justify-center">
+            <div className="flex items-center space-x-2 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-2 text-red-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                />
+              </svg>
+              <span>{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="ml-2 rounded-full p-1 hover:bg-red-100"
+                title="Dismiss error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-4 w-4"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="flex items-center justify-between rounded-lg bg-[#E8F5E9] p-4 transition-all duration-300 ease-out">
@@ -279,9 +327,9 @@ export function Chat() {
               );
             })}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="animate-fade-in flex justify-start">
                 <div className="relative rounded-lg border-2 border-[#4CAF50] bg-[#F5F1E9] p-4 shadow-lg">
-                  <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                  {/* <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
                     <Image
                       src="/agents/explorer-agent.svg"
                       alt="Explorer"
@@ -292,7 +340,7 @@ export function Chat() {
                     <span className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}>
                       Explorer
                     </span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-2">
                     <LoadingIcon />
                     <div className="flex justify-start">
@@ -333,7 +381,7 @@ export function Chat() {
                 type="button"
                 onClick={handleSummarize}
                 variant="summarize"
-                disabled={isLoading || messages.length === 0}
+                disabled={loadingState || messages.length === 0}
                 title="Summarize conversation"
                 className="rounded-xl bg-blue-500 px-3 py-2 text-white shadow-md transition hover:bg-blue-600"
               >
@@ -344,7 +392,7 @@ export function Chat() {
                 type="button"
                 onClick={() => setMessages([])}
                 variant="delete"
-                disabled={isLoading || messages.length === 0}
+                disabled={loadingState || messages.length === 0}
                 title="Clear chat history"
                 className="rounded-xl bg-red-500 px-3 py-2 text-white shadow-md transition hover:bg-red-600"
               >
@@ -354,7 +402,7 @@ export function Chat() {
 
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={loadingState}
               title="Send message"
               className="rounded-xl bg-green-500 px-4 py-2 text-white shadow-md transition hover:bg-green-600"
             >

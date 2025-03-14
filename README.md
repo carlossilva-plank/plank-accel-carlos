@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Explorer AI - Multi-Agent Conversational Interface
+
+A modern, interactive AI chat application featuring multiple specialized agents with distinct personalities, powered by LangGraph and Next.js.
+
+## Features
+
+### Multi-Agent System
+- **Explorer Agent**: An adventurous guide with a passion for discovery and storytelling, leading users through their journey of exploration.
+- **Weather Agent**: A weather expert with a sarcastic sense of humor, providing weather information with a witty twist.
+- **News Agent**: A sarcastic news reporter delivering current events with a distinctive personality.
+
+### Interactive Interface
+- 🎙️ Voice Input: Natural speech-to-text conversion for hands-free interaction
+- 🔊 Text-to-Speech: Listen to agent responses with voice synthesis
+- 💬 Real-time Chat: Fluid conversation experience with markdown support
+- 📝 Message History: Track and review your conversation history
+- 🔄 Auto-summarization: Get concise summaries of your conversations
+
+### User Experience
+- 🎨 Modern UI with explorer theme
+- 🌓 Consistent design language
+- 📱 Responsive layout
+- ⚡ Real-time interactions
+- 🔐 Secure authentication
+
+## Technologies
+
+### Frontend
+- **Next.js 14**: App Router, Server Components
+- **React**: Hooks, Context
+- **Tailwind CSS**: Styling and animations
+- **TypeScript**: Type safety
+- **Web Speech API**: Voice input/output capabilities
+- **Heroicons**: UI icons
+- **Google Fonts**: Playfair Display, Quicksand
+
+### Backend
+- **Next.js API Routes**: Backend API
+- **LangGraph**: Multi-agent orchestration
+- **LangChain**: LLM interactions
+- **Authentication**: Session-based auth
+
+### Development
+- **ESLint**: Code quality
+- **Prettier**: Code formatting
+- **TypeScript**: Static typing
+- **Git**: Version control
+
+## LangGraph Workflow
+
+![LangGraph Workflow Architecture](workflow.jpeg)
+
+The application uses LangGraph to orchestrate a multi-agent system with parallel processing capabilities. The architecture follows a Router-Agents-Aggregator pattern:
+
+### Agent Design
+- **Router Agent**: Analyzes user input and determines which specialized agent(s) should handle the request
+- **Specialized Agents**:
+  - Weather Agent: Handles weather-related queries with real-time data
+  - News Agent: Processes news-related requests with current events
+  - General Agent: Manages general knowledge and conversation
+- **Communication**: Agents operate independently and in parallel when multiple are selected
+
+### Graph Structure
+- **Nodes**:
+  - Router Node: Entry point that analyzes and routes requests
+  - Agent Nodes: Specialized processing units (Weather, News, General)
+  - Aggregator Node: Combines multiple agent responses
+- **Edges**:
+  - START → Router: Initial request analysis
+  - Router → Agent(s): Conditional routing based on content
+  - Agent(s) → Aggregator: Response collection
+  - Aggregator → END: Final response formation
+
+### State Management
+- **Graph State**:
+  - input: User's message
+  - decision: Selected agents for processing
+  - outputs: Individual agent responses
+  - combinedOutputs: Aggregated final response
+- **Agent State**:
+  - Every agent can read and access
+  - Includes conversation history
+
+### Integration Points
+- **Frontend Communication**:
+  - Next.js API routes for request handling
+  - Real-time response streaming
+  - WebSocket for continuous updates
+- **External Connections**:
+  - OpenAI API for LLM processing
+  - Weather API for real-time weather data
+  - News API for current events
+- **Error Handling**:
+  - Graceful degradation on agent failures
+  - Fallback to general agent when specialized services fail
+  - Request validation and sanitization
 
 ## Getting Started
 
-First, run the development server:
-
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone [repository-url]
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+## Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+NEXT_PUBLIC_SUPABASE_URL=your-key-goes-here
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key-goes-here
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+OPENAI_API_KEY=your-key-goes-here
 
-## Deploy on Vercel
+OPENWEATHER_API_KEY=your-key-goes-here
+NEWS_API_KEY=your-key-goes-here
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+LANGCHAIN_API_KEY=your-key-goes-here
+LANGCHAIN_API_URL=your-key-goes-here
+LANGCHAIN_TRACING_V2=your-key-goes-here
+LANGCHAIN_PROJECT=your-key-goes-here
+LANGCHAIN_ENDPOINT=your-key-goes-here
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
