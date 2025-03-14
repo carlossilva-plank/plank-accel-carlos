@@ -1,9 +1,13 @@
 import './globals.css';
-import type { Metadata } from 'next';
+import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Chat App',
-  description: 'A chat application with authentication',
+  title: 'Chat AI',
+  description: 'Your AI-powered exploration companion',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
