@@ -57,6 +57,7 @@ export function Chat() {
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const {
@@ -75,31 +76,35 @@ export function Chat() {
     },
     onResponse: async (response) => {
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        setError('An error occurred while processing the message. Please try again.');
+        return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No reader available');
+      try {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No reader available');
+        }
+
+        const { value } = await reader.read();
+        const newMessage = new TextDecoder().decode(value);
+
+        const messageObject = JSON.parse(newMessage);
+
+        setMessages((prev) => {
+          return [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: messageObject.combinedOutputs,
+              agents: messageObject.decision,
+            } as ExtendedMessage,
+          ];
+        });
+      } catch (err) {
+        setError('An error occurred while processing the message. Please try again.');
       }
-
-      const { value } = await reader.read();
-      const newMessage = new TextDecoder().decode(value);
-
-      const messageObject = JSON.parse(newMessage);
-      console.log(messageObject, 'messageObject');
-
-      setMessages((prev) => {
-        return [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: messageObject.combinedOutputs,
-            agents: messageObject.decision,
-          } as ExtendedMessage,
-        ];
-      });
       return;
     },
   });
@@ -169,6 +174,43 @@ export function Chat() {
     <div className={`flex h-screen flex-col bg-[#F5F1E9] ${quicksand.className}`}>
       <ChatHeader onLogout={handleLogout} />
       <div className="flex-1 space-y-4 overflow-y-auto p-4" ref={chatContainerRef}>
+        {error && (
+          <div className="animate-fade-in flex justify-center">
+            <div className="flex items-center space-x-2 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-2 text-red-700">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                />
+              </svg>
+              <span>{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="ml-2 rounded-full p-1 hover:bg-red-100"
+                title="Dismiss error"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-4 w-4"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center">
             <div className="flex items-center justify-between rounded-lg bg-[#E8F5E9] p-4 transition-all duration-300 ease-out">
