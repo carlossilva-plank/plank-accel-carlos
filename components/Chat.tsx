@@ -31,7 +31,7 @@ interface ExtendedMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  agent: AgentInfo;
+  agents: string[];
 }
 
 const agentInfo = {
@@ -86,6 +86,7 @@ export function Chat() {
       const newMessage = new TextDecoder().decode(value);
 
       const messageObject = JSON.parse(newMessage);
+      console.log(messageObject, 'messageObject');
 
       setMessages((prev) => {
         return [
@@ -93,8 +94,8 @@ export function Chat() {
           {
             id: Date.now().toString(),
             role: 'assistant',
-            content: messageObject.output,
-            agent: messageObject.decision,
+            content: messageObject.combinedOutputs,
+            agents: messageObject.decision,
           } as ExtendedMessage,
         ];
       });
@@ -127,6 +128,12 @@ export function Chat() {
 
   const handleSummarize = async () => {
     append({ role: 'user', content: 'Please summarize our conversation so far.' });
+    setTimeout(() => {
+      chatContainerRef.current?.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }, 100);
   };
 
   const handleLogout = async () => {
@@ -197,8 +204,8 @@ export function Chat() {
           </div>
         ) : (
           <div className="space-y-4">
-            {(messages as Array<any>).map((message, index) => {
-              const curAgentData = agentInfo[message.agent as keyof typeof agentInfo];
+            {(messages as unknown as ExtendedMessage[]).map((message, index) => {
+              const curAgentData = agentInfo[message.agents?.at(0) as keyof typeof agentInfo];
 
               return (
                 <div
@@ -212,23 +219,52 @@ export function Chat() {
                         : 'border-2 border-[#4CAF50] bg-[#F5F1E9] text-[#2F4F4F]'
                     } relative shadow-lg`}
                   >
-                    {message.role === 'assistant' && curAgentData && (
-                      <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
-                        <Image
-                          src={curAgentData.image}
-                          alt={curAgentData.name}
-                          width={20}
-                          height={20}
-                          className="rounded-full"
-                        />
-                        <span
-                          className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}
-                        >
-                          {curAgentData.name}
-                        </span>
-                        <TextToSpeech text={message.content} />
-                      </div>
-                    )}
+                    {message.role === 'assistant' &&
+                      (curAgentData && message.agents.length === 1 ? (
+                        <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                          <Image
+                            src={curAgentData.image}
+                            alt={curAgentData.name}
+                            width={20}
+                            height={20}
+                            className="rounded-full"
+                          />
+                          <span
+                            className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}
+                          >
+                            {curAgentData.name}
+                          </span>
+                          <TextToSpeech text={message.content} />
+                        </div>
+                      ) : (
+                        <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                          {message.agents.map((agent, i) => {
+                            const agentData = agentInfo[agent as keyof typeof agentInfo];
+
+                            return (
+                              <div key={i} className="flex items-center space-x-2">
+                                <Image
+                                  src={agentData.image}
+                                  alt={agentData.name}
+                                  width={20}
+                                  height={20}
+                                  className="rounded-full"
+                                />
+                                <span
+                                  className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}
+                                >
+                                  {agentData.name}
+                                </span>
+                                {i === message.agents.length - 1 ? (
+                                  <TextToSpeech text={message.content} />
+                                ) : (
+                                  <div>{' + '}</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
                     <div
                       className={`prose ${
                         message.role === 'user'
@@ -316,7 +352,6 @@ export function Chat() {
               </Button>
             </div>
 
-            {/* Send Button */}
             <Button
               type="submit"
               disabled={isLoading}
