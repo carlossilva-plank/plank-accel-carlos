@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
-import { Quicksand, Playfair_Display, Caveat } from 'next/font/google';
+import { Quicksand, Playfair_Display } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 
 import { ChatHeader } from './ChatHeader';
@@ -14,6 +14,9 @@ import { SendIcon } from './icons/SendIcon';
 import { LoadingIcon } from './icons/LoadingIcon';
 import { SummarizeIcon } from './icons/SummarizeIcon';
 import { DeleteIcon } from './icons/DeleteIcon';
+
+import VoiceRecorder from '@/lib/voice/VoiceRecorder';
+import TextToSpeech from '@/lib/voice/TextToSpeech';
 
 const quicksand = Quicksand({ subsets: ['latin'] });
 const playfair = Playfair_Display({ subsets: ['latin'] });
@@ -63,6 +66,7 @@ export function Chat() {
     isLoading,
     setMessages,
     setInput,
+    append,
   } = useChat({
     api: '/api/chat',
     onFinish: (message) => {
@@ -122,15 +126,7 @@ export function Chat() {
   };
 
   const handleSummarize = async () => {
-    setInput('Please summarize our conversation so far.');
-
-    const formEvent = {
-      preventDefault: () => {},
-    } as React.FormEvent;
-
-    setTimeout(() => {
-      handleSubmit(formEvent);
-    }, 100);
+    append({ role: 'user', content: 'Please summarize our conversation so far.' });
   };
 
   const handleLogout = async () => {
@@ -148,6 +144,13 @@ export function Chat() {
       console.error('Error logging out:', error);
     }
   };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
 
   return (
     <div className={`flex h-screen flex-col bg-[#F5F1E9] ${quicksand.className}`}>
@@ -223,6 +226,7 @@ export function Chat() {
                         >
                           {curAgentData.name}
                         </span>
+                        <TextToSpeech text={message.content} />
                       </div>
                     )}
                     <div
@@ -271,21 +275,23 @@ export function Chat() {
           </div>
         )}
       </div>
-      <form onSubmit={handleSubmit} className="border-t border-[#4CAF50] bg-[#F5F1E9] p-4">
-        <div className="flex h-[80px] space-x-4">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask me anything..."
-            className={`flex-1 resize-none rounded-lg border-2 border-[#4CAF50] bg-[#F5F1E9] p-3 text-[#2F4F4F] focus:outline-none focus:ring-2 focus:ring-[#4CAF50] ${quicksand.className}`}
-            rows={1}
-          />
-          <div className="flex flex-col space-y-2">
-            <Button type="submit" disabled={isLoading} title="Send message">
-              {isLoading ? <LoadingIcon /> : <SendIcon />}
-            </Button>
+      <form onSubmit={handleSubmit} className=" bg-transparent p-4">
+        <div className="flex w-full flex-col space-y-2 rounded-2xl bg-[#E6E1D5] p-2 shadow-lg">
+          <div className="relative flex w-full">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me anything..."
+              className={`max-h-40 w-full resize-none overflow-hidden rounded-xl bg-transparent p-3 text-gray-700 transition focus:outline-none focus:ring-0 ${quicksand.className}`}
+              rows={1}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 transform">
+              <VoiceRecorder onRecordingComplete={(text) => setInput(text)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-2">
             <div className="flex space-x-2">
               <Button
                 type="button"
@@ -293,19 +299,32 @@ export function Chat() {
                 variant="summarize"
                 disabled={isLoading || messages.length === 0}
                 title="Summarize conversation"
+                className="rounded-xl bg-blue-500 px-3 py-2 text-white shadow-md transition hover:bg-blue-600"
               >
                 <SummarizeIcon />
               </Button>
+
               <Button
                 type="button"
                 onClick={() => setMessages([])}
                 variant="delete"
                 disabled={isLoading || messages.length === 0}
                 title="Clear chat history"
+                className="rounded-xl bg-red-500 px-3 py-2 text-white shadow-md transition hover:bg-red-600"
               >
                 <DeleteIcon />
               </Button>
             </div>
+
+            {/* Send Button */}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              title="Send message"
+              className="rounded-xl bg-green-500 px-4 py-2 text-white shadow-md transition hover:bg-green-600"
+            >
+              {isLoading ? <LoadingIcon /> : <SendIcon />}
+            </Button>
           </div>
         </div>
       </form>

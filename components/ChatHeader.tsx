@@ -11,9 +11,9 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ onLogout }: ChatHeaderProps) {
   return (
-    <header className="relative border-b border-[#4CAF50] bg-[#F5F1E9] p-6">
+    <header className="relative bg-[#F5F1E9] p-4">
       <div className="absolute inset-0 bg-[url('/patterns/compass-pattern.png')] opacity-5"></div>
-      <div className="relative mx-auto max-w-4xl">
+      <div className="relative mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div className="relative h-12 w-12">
