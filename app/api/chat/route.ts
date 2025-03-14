@@ -13,49 +13,43 @@ import {
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
-  console.log(messages, 'messages');
   const lastMessage = messages.at(-1)?.content;
 
   const state = await routerWorkflow.invoke({ input: lastMessage, messages });
   console.log(state, 'state');
 
-  return new Response(JSON.stringify({ output: state.output, decision: state.decision }));
+  return new Response(
+    JSON.stringify({
+      outputs: state.outputs,
+      decision: state.decision,
+      combinedOutputs: state.combinedOutputs,
+    })
+  );
 }
 
 // export async function POST(req: Request) {
 //   const { messages } = await req.json();
+//   const lastMessage = messages.at(-1)?.content;
 
-//   const state = await routerWorkflow.invoke({ input: messages });
-//   console.log(state.output);
-
-//   return new Response(state.output);
-
-//   const graph = await getMultiAgentGraph();
-//   const res = await graph.invoke({ messages });
-//   console.log(res);
-
-//   return new Response(res.messages.at(-1)?.content.toString() ?? '');
-
-//   const streamResult = await graph.stream({ messages }, { streamMode: 'messages' });
-//   let result = '';
-//   for await (const [message, _metadata] of streamResult) {
-//     if (isAIMessageChunk(message) && !(message instanceof AIMessage)) {
-//       console.log(message.content);
-//       result += message.content;
-//     }
-//   }
-//   console.log(result, 'result');
-//   return new Response(result);
+//   const state = await routerWorkflow.stream({ input: lastMessage, messages });
+//   console.log(state, 'state');
 
 //   return createDataStreamResponse({
 //     async execute(dataStream) {
 //       try {
-//         for await (const [message, _metadata] of streamResult) {
-//           if (isAIMessageChunk(message) && !(message instanceof AIMessage)) {
-//             console.log(message.content, 'message');
-//             dataStream.write(
-//               `0:${JSON.stringify({ content: message.content, role: 'assistant' })}\n`
-//             );
+//         for await (const chunk of state) {
+//           // console.log(chunk, typeof chunk, 'chunk');
+//           if (chunk && typeof chunk === 'object') {
+//             // Handle the state object
+//             if ('output' in chunk) {
+//               dataStream.write(
+//                 `0:${JSON.stringify({
+//                   content: chunk.output,
+//                   role: 'assistant',
+//                   agent: chunk.decision || 'general',
+//                 })}\n`
+//               );
+//             }
 //           }
 //         }
 //       } catch (error) {
