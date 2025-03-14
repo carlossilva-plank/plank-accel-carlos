@@ -3,8 +3,23 @@
 import { useRef, useEffect } from 'react';
 import { useChat } from 'ai/react';
 import ReactMarkdown from 'react-markdown';
-import { routerWorkflow } from '@/lib/agent/ma-test';
 import Image from 'next/image';
+import { Quicksand, Playfair_Display } from 'next/font/google';
+import { useRouter } from 'next/navigation';
+
+import { ChatHeader } from './ChatHeader';
+import { Button } from './ui/Button';
+
+import { SendIcon } from './icons/SendIcon';
+import { LoadingIcon } from './icons/LoadingIcon';
+import { SummarizeIcon } from './icons/SummarizeIcon';
+import { DeleteIcon } from './icons/DeleteIcon';
+
+import VoiceRecorder from '@/lib/voice/VoiceRecorder';
+import TextToSpeech from '@/lib/voice/TextToSpeech';
+
+const quicksand = Quicksand({ subsets: ['latin'] });
+const playfair = Playfair_Display({ subsets: ['latin'] });
 
 interface AgentInfo {
   name: string;
@@ -31,9 +46,9 @@ const agentInfo = {
     description: 'Sarcastic news reporter with a witty personality',
   },
   general: {
-    name: 'Wizard',
-    image: '/agents/wizard-agent.svg',
-    description: 'Magical wizard with a sarcastic sense of humor',
+    name: 'Explorer',
+    image: '/agents/explorer-agent.svg',
+    description: 'Adventurous explorer with a passion for discovery and storytelling',
   },
 };
 
@@ -41,6 +56,7 @@ export function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const {
     messages,
@@ -50,6 +66,7 @@ export function Chat() {
     isLoading,
     setMessages,
     setInput,
+    append,
   } = useChat({
     api: '/api/chat',
     onFinish: (message) => {
@@ -99,14 +116,6 @@ export function Chat() {
     await submitMessage(e);
   };
 
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
-    }
-  }, [input]);
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -117,188 +126,208 @@ export function Chat() {
   };
 
   const handleSummarize = async () => {
-    // Set the input value to the summary request
-    setInput('Please summarize our conversation so far.');
-
-    // Create a synthetic form event
-    const formEvent = {
-      preventDefault: () => {},
-    } as React.FormEvent;
-
-    // Use the same handleSubmit function that's used for manual submissions
-    setTimeout(() => {
-      handleSubmit(formEvent);
-    }, 100);
+    append({ role: 'user', content: 'Please summarize our conversation so far.' });
   };
 
-  return (
-    <div className="flex h-[calc(100vh-80px)] flex-col">
-      <div
-        ref={chatContainerRef}
-        className="mt-4 flex-1 space-y-4 overflow-y-auto px-4 sm:px-6 lg:px-8"
-      >
-        {(messages as Array<any>).map((message, index) => {
-          const curAgentData = agentInfo[message.agent as keyof typeof agentInfo];
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/auth/logout', {
+        method: 'POST',
+      });
 
-          return (
-            <div
-              key={message.id}
-              ref={index === messages.length - 1 ? lastMessageRef : undefined}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-xl px-4 py-2.5 ${
-                  message.role === 'user' ? 'bg-blue-400 text-white' : 'bg-gray-100 text-gray-800'
-                } whitespace-pre-wrap`}
-              >
-                {message.role === 'user' ? (
-                  message.content
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative h-8 w-8 overflow-hidden rounded-full">
-                        <Image
-                          src={curAgentData.image || '/agents/wizard-agent.svg'}
-                          alt={curAgentData.name || 'Wizard'}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold">
-                          {curAgentData.name || 'Wizard'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {curAgentData.description ||
-                            'Magical wizard with a sarcastic sense of humor'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <ReactMarkdown
-                        components={{
-                          div: ({ node, ...props }) => (
-                            <div
-                              {...props}
-                              className="prose prose-sm max-w-none dark:prose-invert [&>*]:my-1"
-                            />
-                          ),
-                          a: ({ node, ...props }) => (
-                            <a
-                              {...props}
-                              className="text-blue-500 hover:underline"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            />
-                          ),
-                          ul: ({ node, ...props }) => (
-                            <ul {...props} className="list-inside list-disc" />
-                          ),
-                          code: ({ node, ...props }) => (
-                            <code {...props} className="rounded bg-gray-200 px-1 py-0.5" />
-                          ),
-                          h1: ({ node, ...props }) => (
-                            <h1 {...props} className="my-1 text-xl font-bold" />
-                          ),
-                          h2: ({ node, ...props }) => (
-                            <h2 {...props} className="my-1 text-lg font-bold" />
-                          ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
+      if (!response.ok) {
+        throw new Error('Failed to logout');
+      }
+
+      router.replace('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
+
+  return (
+    <div className={`flex h-screen flex-col bg-[#F5F1E9] ${quicksand.className}`}>
+      <ChatHeader onLogout={handleLogout} />
+      <div className="flex-1 space-y-4 overflow-y-auto p-4" ref={chatContainerRef}>
+        {messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center">
+            <div className="flex items-center justify-between rounded-lg bg-[#E8F5E9] p-4 transition-all duration-300 ease-out">
+              <div className="flex items-center space-x-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="#4CAF50"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+                  />
+                </svg>
+                <span className="text-sm text-[#2E7D32]">Ready to explore</span>
               </div>
-            </div>
-          );
-        })}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="rounded-xl bg-gray-100 px-4 py-2.5 text-gray-800">
-              <div className="flex space-x-2">
-                <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" />
-                <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 delay-100" />
-                <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 delay-200" />
+              <div className="flex items-center space-x-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="#4CAF50"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.171-.879-1.172-2.303 0-3.182C10.536 7.719 11.768 7.5 12 7.5c1.45 0 2.9.439 4.003 1.318"
+                  />
+                </svg>
+                <span className="text-sm text-[#2E7D32]">Ask anything</span>
               </div>
             </div>
           </div>
+        ) : (
+          <div className="space-y-4">
+            {(messages as Array<any>).map((message, index) => {
+              const curAgentData = agentInfo[message.agent as keyof typeof agentInfo];
+
+              return (
+                <div
+                  key={index}
+                  className={`animate-fade-in flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-lg p-4 ${
+                      message.role === 'user'
+                        ? 'border-l-4 border-[#4CAF50] bg-[#2E7D32] text-white shadow-[0_4px_8px_rgba(46,125,50,0.2)]'
+                        : 'border-2 border-[#4CAF50] bg-[#F5F1E9] text-[#2F4F4F]'
+                    } relative shadow-lg`}
+                  >
+                    {message.role === 'assistant' && curAgentData && (
+                      <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                        <Image
+                          src={curAgentData.image}
+                          alt={curAgentData.name}
+                          width={20}
+                          height={20}
+                          className="rounded-full"
+                        />
+                        <span
+                          className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}
+                        >
+                          {curAgentData.name}
+                        </span>
+                        <TextToSpeech text={message.content} />
+                      </div>
+                    )}
+                    <div
+                      className={`prose ${
+                        message.role === 'user'
+                          ? `prose-invert ${quicksand.className} text-lg`
+                          : `prose-[#2F4F4F] ${quicksand.className}`
+                      } max-w-none`}
+                    >
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="relative rounded-lg border-2 border-[#4CAF50] bg-[#F5F1E9] p-4 shadow-lg">
+                  <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                    <Image
+                      src="/agents/explorer-agent.svg"
+                      alt="Explorer"
+                      width={20}
+                      height={20}
+                      className="rounded-full"
+                    />
+                    <span className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}>
+                      Explorer
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <LoadingIcon />
+                    <div className="flex justify-start">
+                      <div className="rounded-xl bg-transparent px-4 py-2.5 text-gray-800">
+                        <div className="flex space-x-2">
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500" />
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 delay-100" />
+                          <div className="h-2 w-2 animate-bounce rounded-full bg-gray-500 delay-200" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
-
-      <div className="rounded-2xl border-t border-gray-50 bg-white py-4">
-        <div className="mx-auto px-4 sm:px-6 lg:px-8">
-          <form onSubmit={handleSubmit} className="flex items-center justify-center gap-2">
-            <div className="max-w-2xl flex-1">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your message..."
-                className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto rounded-xl border border-gray-300 p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={isLoading}
-              />
+      <form onSubmit={handleSubmit} className=" bg-transparent p-4">
+        <div className="flex w-full flex-col space-y-2 rounded-2xl bg-[#E6E1D5] p-2 shadow-lg">
+          <div className="relative flex w-full">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me anything..."
+              className={`max-h-40 w-full resize-none overflow-hidden rounded-xl bg-transparent p-3 text-gray-700 transition focus:outline-none focus:ring-0 ${quicksand.className}`}
+              rows={1}
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 transform">
+              <VoiceRecorder onRecordingComplete={(text) => setInput(text)} />
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                type="submit"
-                className="w-[140px] rounded-xl bg-blue-500 px-6 py-3 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isLoading || !input.trim()}
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                onClick={handleSummarize}
+                variant="summarize"
+                disabled={isLoading || messages.length === 0}
+                title="Summarize conversation"
+                className="rounded-xl bg-blue-500 px-3 py-2 text-white shadow-md transition hover:bg-blue-600"
               >
-                {isLoading ? 'Sending...' : 'Send'}
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMessages([])}
-                  className="w-[68px] rounded-xl bg-gray-100 px-6 py-3 text-gray-500 hover:bg-red-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-gray-50 disabled:hover:text-gray-300"
-                  title="Clear chat history"
-                  disabled={isLoading || messages.length === 0}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                    />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSummarize}
-                  className="w-[68px] rounded-xl bg-gray-100 px-6 py-3 text-gray-500 hover:bg-green-100 hover:text-green-500 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-gray-50 disabled:hover:text-gray-300"
-                  title="Summarize conversation"
-                  disabled={isLoading || messages.length === 0}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="h-5 w-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                    />
-                  </svg>
-                </button>
-              </div>
+                <SummarizeIcon />
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => setMessages([])}
+                variant="delete"
+                disabled={isLoading || messages.length === 0}
+                title="Clear chat history"
+                className="rounded-xl bg-red-500 px-3 py-2 text-white shadow-md transition hover:bg-red-600"
+              >
+                <DeleteIcon />
+              </Button>
             </div>
-          </form>
+
+            {/* Send Button */}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              title="Send message"
+              className="rounded-xl bg-green-500 px-4 py-2 text-white shadow-md transition hover:bg-green-600"
+            >
+              {isLoading ? <LoadingIcon /> : <SendIcon />}
+            </Button>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
