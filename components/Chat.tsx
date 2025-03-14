@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useChat } from 'ai/react';
 import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
@@ -56,6 +56,7 @@ export function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const {
@@ -103,9 +104,11 @@ export function Chat() {
     },
   });
 
+  const loadingState = isLoading || loading;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading || !input.trim()) return;
+    if (loadingState || !input.trim()) return;
 
     setTimeout(() => {
       chatContainerRef.current?.scrollTo({
@@ -120,7 +123,7 @@ export function Chat() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (!isLoading && input.trim()) {
+      if (!loadingState && input.trim()) {
         handleSubmit(e);
       }
     }
@@ -138,6 +141,7 @@ export function Chat() {
 
   const handleLogout = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/auth/logout', {
         method: 'POST',
       });
@@ -149,6 +153,8 @@ export function Chat() {
       router.replace('/login');
     } catch (error) {
       console.error('Error logging out:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -279,9 +285,9 @@ export function Chat() {
               );
             })}
             {isLoading && (
-              <div className="flex justify-start">
+              <div className="animate-fade-in flex justify-start">
                 <div className="relative rounded-lg border-2 border-[#4CAF50] bg-[#F5F1E9] p-4 shadow-lg">
-                  <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
+                  {/* <div className="absolute -top-6 left-2 flex items-center space-x-2 rounded-full border border-[#4CAF50] bg-[#F5F1E9] px-2 py-1">
                     <Image
                       src="/agents/explorer-agent.svg"
                       alt="Explorer"
@@ -292,7 +298,7 @@ export function Chat() {
                     <span className={`text-sm font-medium text-[#4CAF50] ${playfair.className}`}>
                       Explorer
                     </span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-2">
                     <LoadingIcon />
                     <div className="flex justify-start">
@@ -333,7 +339,7 @@ export function Chat() {
                 type="button"
                 onClick={handleSummarize}
                 variant="summarize"
-                disabled={isLoading || messages.length === 0}
+                disabled={loadingState || messages.length === 0}
                 title="Summarize conversation"
                 className="rounded-xl bg-blue-500 px-3 py-2 text-white shadow-md transition hover:bg-blue-600"
               >
@@ -344,7 +350,7 @@ export function Chat() {
                 type="button"
                 onClick={() => setMessages([])}
                 variant="delete"
-                disabled={isLoading || messages.length === 0}
+                disabled={loadingState || messages.length === 0}
                 title="Clear chat history"
                 className="rounded-xl bg-red-500 px-3 py-2 text-white shadow-md transition hover:bg-red-600"
               >
@@ -354,7 +360,7 @@ export function Chat() {
 
             <Button
               type="submit"
-              disabled={isLoading}
+              disabled={loadingState}
               title="Send message"
               className="rounded-xl bg-green-500 px-4 py-2 text-white shadow-md transition hover:bg-green-600"
             >
