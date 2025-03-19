@@ -1,6 +1,7 @@
 // import { wor } from '@/lib/agent/setup';
 
 // import { getMultiAgentGraph } from '@/lib/agent/ma';
+import { graph } from '@/lib/agent/teste';
 import { routerWorkflow } from '@/lib/agent/multi-agent-graph';
 import { createDataStreamResponse } from 'ai';
 import {
@@ -15,7 +16,10 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
   const lastMessage = messages.at(-1)?.content;
 
-  const state = await routerWorkflow.invoke({ input: lastMessage, messages });
+  const state = await routerWorkflow.invoke(
+    { input: lastMessage, messages },
+    { configurable: { thread_id: '1' } }
+  );
   console.log(state, 'state');
 
   return new Response(
@@ -26,6 +30,39 @@ export async function POST(req: Request) {
     })
   );
 }
+
+// export async function POST(req: Request) {
+//   const { messages } = await req.json();
+//   const lastMessage = messages.at(-1)?.content;
+
+//   const state = await routerWorkflow.stream({ input: lastMessage, messages });
+//   console.log(state, 'state');
+
+//   return new Response(JSON.stringify(state), {
+//     headers: {
+//         'Content-Type': 'text/event-stream',
+//         'Cache-Control': 'no-cache',
+//         'Connection': 'keep-alive',
+//     },
+// });
+
+// return createDataStreamResponse({
+//   async execute(dataStream) {
+//     for await (const chunk of state) {
+//       console.log('chunk', chunk);
+//       dataStream.write(`0:${JSON.stringify(chunk)}`);
+//     }
+//   },
+// });
+
+// return new Response(
+//   JSON.stringify({
+//     outputs: state.outputs,
+//     decision: state.decision,
+//     combinedOutputs: state.combinedOutputs,
+//   })
+// );
+// }
 
 // export async function POST(req: Request) {
 //   const { messages } = await req.json();

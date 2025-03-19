@@ -5,12 +5,23 @@ import { ChatOpenAI } from '@langchain/openai';
 import { createReactAgent } from '@langchain/langgraph/prebuilt';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { z } from 'zod';
+import { RunnableConfig } from '@langchain/core/runnables';
+import pg from 'pg';
+import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 
 import { getWeather } from '../tools/weather';
 import { getNews } from '../tools/news';
 
 import { personality } from '../utils/personality';
-import { RunnableConfig } from '@langchain/core/runnables';
+
+const { Pool } = pg;
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const checkpointer = new PostgresSaver(pool);
+await checkpointer.setup();
 
 const llm = new ChatOpenAI({
   modelName: 'gpt-4o-mini',
@@ -56,21 +67,18 @@ const StateAnnotation = Annotation.Root({
 const weatherAgent = createReactAgent({
   llm,
   tools: [getWeather],
-  checkpointer: new MemorySaver(),
   stateModifier: new SystemMessage('You are an expert weather reporter.' + personality),
 });
 
 const newsAgent = createReactAgent({
   llm,
   tools: [getNews],
-  checkpointer: new MemorySaver(),
   stateModifier: new SystemMessage('You are a news reporter.' + personality),
 });
 
 const generalAgent = createReactAgent({
   llm,
   tools: [],
-  checkpointer: sharedCheckpointer,
   stateModifier: new SystemMessage('You are an expert about everything.' + personality),
 });
 
@@ -158,6 +166,6 @@ const routerWorkflow = new StateGraph(StateAnnotation)
   .addEdge('newsAgent', 'aggregateResponses')
   .addEdge('generalAgent', 'aggregateResponses')
   .addEdge('aggregateResponses', END)
-  .compile();
+  .compile({ checkpointer });
 
 export { routerWorkflow };
